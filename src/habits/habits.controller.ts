@@ -27,32 +27,14 @@ export class HabitsController {
     return this.habitsService.findAll();
   }
 
-  @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.habitsService.findOne(id);
-  }
-
-  @Patch(':id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateHabitDto) {
-    return this.habitsService.updateHabit(id, dto);
-  }
-
-  @Patch(':id/archive')
-  archive(@Param('id', ParseIntPipe) id: number) {
-    return this.habitsService.archiveHabit(id);
-  }
-
-  @Post(':id/records')
-  addDayRecord(
+  // 🟢 هنا المسارات الأكثر تحديدًا أولًا
+  @Get(':id/records/by-range')
+  getRecordsByRange(
     @Param('id', ParseIntPipe) id: number,
-    @Body() dto: AddDayRecordDto,
+    @Query('from') from: string,
+    @Query('to') to: string,
   ) {
-    return this.habitsService.addDayRecord(id, dto);
-  }
-
-  @Get(':id/records')
-  getAllRecords(@Param('id', ParseIntPipe) id: number) {
-    return this.habitsService.getAllRecords(id);
+    return this.habitsService.getRecordsByRange(id, from, to);
   }
 
   @Get(':id/records/by-date')
@@ -63,12 +45,32 @@ export class HabitsController {
     return this.habitsService.getRecordByDate(id, date);
   }
 
-  @Get(':id/records/by-range')
-  getRecordsByRange(
+  @Get(':id/records')
+  getAllRecords(@Param('id', ParseIntPipe) id: number) {
+    return this.habitsService.getAllRecords(id);
+  }
+
+  @Post(':id/records')
+  addDayRecord(
     @Param('id', ParseIntPipe) id: number,
-    @Query('from') from: string,
-    @Query('to') to: string,
+    @Body() dto: AddDayRecordDto,
   ) {
-    return this.habitsService.getRecordsByRange(id, from, to);
+    return this.habitsService.addDayRecord(id, dto);
+  }
+
+  @Patch(':id/archive')
+  archive(@Param('id', ParseIntPipe) id: number) {
+    return this.habitsService.archiveHabit(id);
+  }
+
+  @Patch(':id')
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateHabitDto) {
+    return this.habitsService.updateHabit(id, dto);
+  }
+
+  // 🟢 أخيرًا المسار العام
+  @Get(':id')
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.habitsService.findOne(id);
   }
 }
