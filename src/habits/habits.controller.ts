@@ -18,59 +18,97 @@ export class HabitsController {
   constructor(private readonly habitsService: HabitsService) {}
 
   @Post()
-  create(@Body() dto: CreateHabitDto) {
-    return this.habitsService.createHabit(dto);
+  async create(@Body() dto: CreateHabitDto) {
+    const habit = await this.habitsService.createHabit(dto);
+    console.log("ghgh")
+    return {
+      message: 'تم إنشاء العادة بنجاح',
+      data: habit,
+    };
   }
 
   @Get()
-  findAll() {
-    return this.habitsService.findAll();
+  async findAll() {
+    const habits = await this.habitsService.findAll();
+    return {
+      message: 'تم جلب جميع العادات بنجاح',
+      data: habits,
+    };
   }
 
-  // 🟢 هنا المسارات الأكثر تحديدًا أولًا
   @Get(':id/records/by-range')
-  getRecordsByRange(
+  async getRecordsByRange(
     @Param('id', ParseIntPipe) id: number,
     @Query('from') from: string,
     @Query('to') to: string,
   ) {
-    return this.habitsService.getRecordsByRange(id, from, to);
+    const records = await this.habitsService.getRecordsByRange(id, from, to);
+    return {
+      message: `تم جلب السجلات بين ${from} و ${to} بنجاح`,
+      data: records,
+    };
   }
 
   @Get(':id/records/by-date')
-  getRecordByDate(
+  async getRecordByDate(
     @Param('id', ParseIntPipe) id: number,
     @Query('date') date: string,
   ) {
-    return this.habitsService.getRecordByDate(id, date);
+    const record = await this.habitsService.getRecordByDate(id, date);
+    return {
+      message: `تم جلب السجل لتاريخ ${date} بنجاح`,
+      data: record,
+    };
   }
 
   @Get(':id/records')
-  getAllRecords(@Param('id', ParseIntPipe) id: number) {
-    return this.habitsService.getAllRecords(id);
+  async getAllRecords(@Param('id', ParseIntPipe) id: number) {
+    const records = await this.habitsService.getAllRecords(id);
+    return {
+      message: 'تم جلب جميع السجلات بنجاح',
+      data: records,
+    };
   }
 
   @Post(':id/records')
-  addDayRecord(
+  async addDayRecord(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: AddDayRecordDto,
   ) {
-    return this.habitsService.addDayRecord(id, dto);
+    const record = await this.habitsService.addDayRecord(id, dto);
+    return {
+      message: 'تم إضافة أو تحديث السجل اليومي بنجاح',
+      data: record,
+    };
   }
 
   @Patch(':id/archive')
-  archive(@Param('id', ParseIntPipe) id: number) {
-    return this.habitsService.archiveHabit(id);
+  async archive(@Param('id', ParseIntPipe) id: number) {
+    const habit = await this.habitsService.archiveHabit(id);
+    return {
+      message: 'تم أرشفة العادة بنجاح',
+      data: habit,
+    };
   }
 
   @Patch(':id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateHabitDto) {
-    return this.habitsService.updateHabit(id, dto);
+  async update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateHabitDto,
+  ) {
+    const habit = await this.habitsService.updateHabit(id, dto);
+    return {
+      message: 'تم تحديث العادة بنجاح',
+      data: habit,
+    };
   }
 
-  // 🟢 أخيرًا المسار العام
   @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.habitsService.findOne(id);
+  async findOne(@Param('id', ParseIntPipe) id: number) {
+    const habit = await this.habitsService.findOne(id);
+    return {
+      message: 'تم جلب العادة بنجاح',
+      data: habit,
+    };
   }
 }

@@ -1,24 +1,24 @@
-import { IsOptional, IsString, IsBoolean } from 'class-validator';
+import { IsOptional, IsString, IsBoolean, IsEnum } from 'class-validator';
 import { HabitStatus } from '../habit.entity';
 
 export class UpdateHabitDto {
-  @IsString()
+  @IsString({ message: 'اسم العادة يجب أن يكون نصًا' })
   @IsOptional()
   name?: string;
 
-  @IsString()
+  @IsString({ message: 'الوصف يجب أن يكون نصًا' })
   @IsOptional()
   description?: string;
 
-  @IsString()
+  @IsString({ message: 'الملاحظات يجب أن تكون نصًا' })
   @IsOptional()
   notes?: string;
 
-  @IsString()
+  @IsEnum(HabitStatus, { message: 'الحالة غير صحيحة، يجب اختيار قيمة صحيحة' })
   @IsOptional()
   status?: HabitStatus;
 
-  @IsBoolean()
+  @IsBoolean({ message: 'قيمة الأرشفة يجب أن تكون صح أو خطأ (true/false)' })
   @IsOptional()
   archived?: boolean;
 }

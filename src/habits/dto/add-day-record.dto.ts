@@ -2,13 +2,13 @@ import { IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
 import { HabitStatus } from '../habit.entity';
 
 export class AddDayRecordDto {
-  @IsDateString()
-  date: string; // صيغة ISO date, مثل "2025-07-12"
+  @IsDateString({}, { message: 'التاريخ يجب أن يكون بتنسيق صحيح (مثال: 2025-07-12)' })
+  date: string; // صيغة ISO date
 
-  @IsEnum(HabitStatus)
+  @IsEnum(HabitStatus, { message: 'يجب اختيار حالة صحيحة للعادة' })
   status: HabitStatus;
 
-  @IsString()
+  @IsString({ message: 'الملاحظة يجب أن تكون نصاً' })
   @IsOptional()
   note?: string;
 }
