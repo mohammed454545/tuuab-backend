@@ -1,7 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, Repository } from 'typeorm';
-import { Habit } from './habit.entity';
+import { Habit, HabitStatus } from './habit.entity';
 import { HabitDayRecord } from './habit-day-record.entity';
 import { CreateHabitDto } from './dto/create-habit.dto';
 import { UpdateHabitDto } from './dto/update-habit.dto';
@@ -21,9 +24,12 @@ export class HabitsService {
     return this.habitRepository.save(habit);
   }
 
-  async findAll(): Promise<Habit[]> {
-    return this.habitRepository.find();
-  }
+async findAll(): Promise<Habit[]> {
+  return this.habitRepository.find({
+    order: { createdAt: 'DESC' }, // ⬅️ الترتيب من الأحدث إلى الأقدم
+  });
+}
+
 
   async findOne(id: number): Promise<Habit> {
     const habit = await this.habitRepository.findOne({ where: { id } });
@@ -52,18 +58,59 @@ export class HabitsService {
 
     if (existing) {
       existing.status = dto.status;
-      existing.note = dto.note??null;
-      return this.habitDayRecordRepository.save(existing);
+      existing.note = dto.note ?? null;
+      await this.habitDayRecordRepository.save(existing);
+    } else {
+      const record = this.habitDayRecordRepository.create({
+        habit,
+        date: dto.date,
+        status: dto.status,
+        note: dto.note,
+      });
+      await this.habitDayRecordRepository.save(record);
     }
 
-    const record = this.habitDayRecordRepository.create({
-      habit,
-      date: dto.date,
-      status: dto.status,
-      note: dto.note,
+    await this.updateHabitStreaks(habitId);
+
+    return this.getRecordByDate(habitId, dto.date);
+  }
+
+  private async updateHabitStreaks(habitId: number) {
+    const records = await this.habitDayRecordRepository.find({
+      where: { habit: { id: habitId } },
+      order: { date: 'ASC' },
     });
 
-    return this.habitDayRecordRepository.save(record);
+    let currentStreak = 0;
+    let longestStreak = 0;
+    let currentRelapse = 0;
+    let longestRelapse = 0;
+
+    for (const record of records) {
+      if (record.status === HabitStatus.COMPLETED) {
+        currentStreak += 1;
+        currentRelapse = 0;
+        if (currentStreak > longestStreak) {
+          longestStreak = currentStreak;
+        }
+      } else if (record.status === HabitStatus.RELAPSED) {
+        currentRelapse += 1;
+        currentStreak = 0;
+        if (currentRelapse > longestRelapse) {
+          longestRelapse = currentRelapse;
+        }
+      } else {
+        currentStreak = 0;
+        currentRelapse = 0;
+      }
+    }
+
+    const habit = await this.findOne(habitId);
+    habit.currentStreak = currentStreak;
+    habit.longestStreak = longestStreak;
+    habit.longestRelapse = longestRelapse;
+
+    await this.habitRepository.save(habit);
   }
 
   async getAllRecords(habitId: number) {
