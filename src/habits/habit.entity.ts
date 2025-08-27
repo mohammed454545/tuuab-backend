@@ -32,13 +32,6 @@ export class Habit {
   createdAt: Date;
 
   @Expose()
-  @Column({
-    type: 'varchar',
-    default: HabitStatus.COMPLETED,
-  })
-  status: HabitStatus;
-
-  @Expose()
   @Column({ default: 0 })
   currentStreak: number;
 
@@ -49,6 +42,16 @@ export class Habit {
   @Expose()
   @Column({ default: 0 })
   longestRelapse: number;
+
+  // ✅ إجمالي أيام الانتكاسة
+  @Expose()
+  @Column({ default: 0 })
+  totalRelapseDays: number;
+
+  // ✅ إجمالي أيام النجاح (COMPLETED)
+  @Expose()
+  @Column({ default: 0 })
+  totalCompletedDays: number;
 
   @Expose()
   @Column({ type: 'text', nullable: true })
@@ -61,11 +64,14 @@ export class Habit {
   @OneToMany(
     () => HabitDayRecord,
     (dayRecord) => dayRecord.habit,
-    { cascade: true },
+    {
+      cascade: ['insert', 'update', 'remove', 'soft-remove', 'recover'],
+      orphanedRowAction: 'delete',
+    },
   )
   dayRecords: HabitDayRecord[];
 
-  // ✅ Getter لحساب عدد الأيام منذ الإنشاء
+  // ✅ عدد الأيام منذ الإنشاء
   @Expose()
   get totalDays(): number {
     const now = new Date();
@@ -73,14 +79,19 @@ export class Habit {
     return Math.floor(diff / (1000 * 60 * 60 * 24));
   }
 
-  // ✅ Getter لحالة اليوم الحالي
+  // ✅ حالة اليوم الحالي (يحتاج dayRecords تكون محمّلة بسجل اليوم)
   @Expose()
   get todayStatus(): HabitStatus | null {
-    if (!this.dayRecords) return null;
+    if (!this.dayRecords || this.dayRecords.length === 0) return null;
 
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-    const record = this.dayRecords.find((r) => r.date === today);
+    const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
 
-    return record ? record.status : null;
+    const normalize = (d: string | Date): string => {
+      if (d instanceof Date) return d.toLocaleDateString('en-CA');
+      return d.length >= 10 ? d.slice(0, 10) : new Date(d).toLocaleDateString('en-CA');
+    };
+
+    const rec = this.dayRecords.find((r) => normalize(r.date) === today);
+    return rec ? rec.status : null;
   }
 }

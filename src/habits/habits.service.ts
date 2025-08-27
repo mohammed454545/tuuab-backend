@@ -19,20 +19,37 @@ export class HabitsService {
     private habitDayRecordRepository: Repository<HabitDayRecord>,
   ) {}
 
+  // helper صغير لتوحيد تاريخ اليوم بصيغة YYYY-MM-DD محليًا
+  private getToday(): string {
+    return new Date().toLocaleDateString('en-CA');
+  }
+
   async createHabit(dto: CreateHabitDto): Promise<Habit> {
     const habit = this.habitRepository.create(dto);
     return this.habitRepository.save(habit);
   }
 
-async findAll(): Promise<Habit[]> {
-  return this.habitRepository.find({
-    order: { createdAt: 'DESC' }, // ⬅️ الترتيب من الأحدث إلى الأقدم
-  });
-}
+  // ✅ نجلب كل العادات مع سجل اليوم فقط (إن وُجد) لضمان عمل todayStatus
+  async findAll(): Promise<Habit[]> {
+    const today = this.getToday();
 
+    return this.habitRepository
+      .createQueryBuilder('h')
+      .leftJoinAndSelect('h.dayRecords', 'r', 'r.date = :today', { today })
+      .orderBy('h.createdAt', 'DESC')
+      .getMany();
+  }
 
+  // ✅ نجلب عادة واحدة مع سجل اليوم فقط
   async findOne(id: number): Promise<Habit> {
-    const habit = await this.habitRepository.findOne({ where: { id } });
+    const today = this.getToday();
+
+    const habit = await this.habitRepository
+      .createQueryBuilder('h')
+      .leftJoinAndSelect('h.dayRecords', 'r', 'r.date = :today', { today })
+      .where('h.id = :id', { id })
+      .getOne();
+
     if (!habit) throw new NotFoundException(`Habit #${id} not found`);
     return habit;
   }
@@ -45,8 +62,14 @@ async findAll(): Promise<Habit[]> {
 
   async archiveHabit(id: number): Promise<Habit> {
     const habit = await this.findOne(id);
-    habit.archived = true;
+    habit.archived = !habit.archived;
     return this.habitRepository.save(habit);
+  }
+
+  async deleteHabit(id: number): Promise<void> {
+    const habit = await this.findOne(id);
+    await this.habitRepository.remove(habit); // سيحذف السجلات التابعة تلقائياً
+    // أو: await this.habitRepository.delete(id);
   }
 
   async addDayRecord(habitId: number, dto: AddDayRecordDto) {
@@ -75,43 +98,48 @@ async findAll(): Promise<Habit[]> {
     return this.getRecordByDate(habitId, dto.date);
   }
 
-  private async updateHabitStreaks(habitId: number) {
-    const records = await this.habitDayRecordRepository.find({
-      where: { habit: { id: habitId } },
-      order: { date: 'ASC' },
-    });
+private async updateHabitStreaks(habitId: number) {
+  const records = await this.habitDayRecordRepository.find({
+    where: { habit: { id: habitId } },
+    order: { date: 'ASC' },
+  });
 
-    let currentStreak = 0;
-    let longestStreak = 0;
-    let currentRelapse = 0;
-    let longestRelapse = 0;
+  let currentStreak = 0;
+  let longestStreak = 0;
+  let currentRelapse = 0;
+  let longestRelapse = 0;
+  let totalRelapseDays = 0;
+  let totalCompletedDays = 0; // ✅ جديد
 
-    for (const record of records) {
-      if (record.status === HabitStatus.COMPLETED) {
-        currentStreak += 1;
-        currentRelapse = 0;
-        if (currentStreak > longestStreak) {
-          longestStreak = currentStreak;
-        }
-      } else if (record.status === HabitStatus.RELAPSED) {
-        currentRelapse += 1;
-        currentStreak = 0;
-        if (currentRelapse > longestRelapse) {
-          longestRelapse = currentRelapse;
-        }
-      } else {
-        currentStreak = 0;
-        currentRelapse = 0;
-      }
+  for (const record of records) {
+    if (record.status === HabitStatus.COMPLETED) {
+      totalCompletedDays += 1;       // ✅ نجمع كل أيام النجاح
+      currentStreak += 1;
+      currentRelapse = 0;
+      if (currentStreak > longestStreak) longestStreak = currentStreak;
+    } else if (record.status === HabitStatus.RELAPSED) {
+      totalRelapseDays += 1;
+      currentRelapse += 1;
+      currentStreak = 0;
+      if (currentRelapse > longestRelapse) longestRelapse = currentRelapse;
+    } else {
+      currentStreak = 0;
+      currentRelapse = 0;
     }
-
-    const habit = await this.findOne(habitId);
-    habit.currentStreak = currentStreak;
-    habit.longestStreak = longestStreak;
-    habit.longestRelapse = longestRelapse;
-
-    await this.habitRepository.save(habit);
   }
+
+  // نحدّث الحقول مباشرة بدون تحميل العلاقات
+  await this.habitRepository.update(habitId, {
+    currentStreak,
+    longestStreak,
+    longestRelapse,
+    totalRelapseDays,
+    totalCompletedDays, // ✅ جديد
+  });
+}
+
+
+
 
   async getAllRecords(habitId: number) {
     return this.habitDayRecordRepository.find({

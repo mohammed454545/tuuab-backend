@@ -7,6 +7,7 @@ import {
   Patch,
   ParseIntPipe,
   Query,
+  Delete,
 } from '@nestjs/common';
 import { HabitsService } from './habits.service';
 import { CreateHabitDto } from './dto/create-habit.dto';
@@ -83,6 +84,12 @@ export class HabitsController {
       data: transformedHabit,
     };
   }
+
+  @Delete(':id')
+async remove(@Param('id', ParseIntPipe) id: number) {
+  await this.habitsService.deleteHabit(id);
+  return { message: 'تم حذف العادة بنجاح', data: { id } };
+}
 
   @Post(':id/records')
   async addDayRecord(

@@ -16,7 +16,11 @@ export class HabitDayRecord {
   @ManyToOne(
     () => Habit,
     (habit) => habit.dayRecords,
-    { onDelete: 'CASCADE' },
+    { 
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE',
+     },
+    
   )
   habit: Habit;
 
