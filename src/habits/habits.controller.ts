@@ -15,6 +15,7 @@ import { UpdateHabitDto } from './dto/update-habit.dto';
 import { AddDayRecordDto } from './dto/add-day-record.dto';
 import { instanceToPlain } from 'class-transformer';
 import { Habit } from './habit.entity';
+import { FindHabitsQueryDto } from './dto/find-habits-query.dto';
 
 @Controller('habits')
 export class HabitsController {
@@ -32,31 +33,35 @@ export class HabitsController {
     };
   }
 
-  @Get()
-  async findAll() {
-    const habits = await this.habitsService.findAll();
-    const transformedHabits = habits.map(h =>
-      instanceToPlain(h, {
-        excludeExtraneousValues: true,
-      }),
-    );
-    return {
-      message: 'تم جلب جميع العادات بنجاح',
-      data: transformedHabits,
-    };
-  }
+@Get()
+async findAll(@Query() query: FindHabitsQueryDto) {
+  // تحويل النص إلى boolean أو تركه undefined لو غير مُرسل
+  const archived =
+    query.archived !== undefined ? query.archived === 'true' : undefined;
 
-  @Get(':id')
-  async findOne(@Param('id', ParseIntPipe) id: number) {
-    const habit = await this.habitsService.findOne(id);
-    const transformedHabit = instanceToPlain(habit, {
-      excludeExtraneousValues: true,
-    });
-    return {
-      message: 'تم جلب العادة بنجاح',
-      data: transformedHabit,
-    };
-  }
+  const habits = await this.habitsService.findAll(archived);
+
+  const transformedHabits = habits.map((h) =>
+    instanceToPlain(h, { excludeExtraneousValues: true }),
+  );
+
+  return {
+    message: 'تم جلب جميع العادات بنجاح',
+    data: transformedHabits,
+  };
+}
+
+@Get(':id')
+async findOne(@Param('id', ParseIntPipe) id: number) {
+  const habit = await this.habitsService.findOne(id);
+  const transformedHabit = instanceToPlain(habit, {
+    excludeExtraneousValues: true,
+  });
+  return {
+    message: 'تم جلب العادة بنجاح',
+    data: transformedHabit,
+  };
+}
 
   @Patch(':id')
   async update(

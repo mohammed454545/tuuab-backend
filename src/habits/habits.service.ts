@@ -29,30 +29,36 @@ export class HabitsService {
     return this.habitRepository.save(habit);
   }
 
-  // ✅ نجلب كل العادات مع سجل اليوم فقط (إن وُجد) لضمان عمل todayStatus
-  async findAll(): Promise<Habit[]> {
-    const today = this.getToday();
+// src/habits/habits.service.ts
+// ✅ نجلب كل العادات مع سجل اليوم فقط (إن وُجد) + فلترة حسب archived إن أُرسلت
+async findAll(archived?: boolean): Promise<Habit[]> {
+  const today = this.getToday();
 
-    return this.habitRepository
-      .createQueryBuilder('h')
-      .leftJoinAndSelect('h.dayRecords', 'r', 'r.date = :today', { today })
-      .orderBy('h.createdAt', 'DESC')
-      .getMany();
+  const qb = this.habitRepository
+    .createQueryBuilder('h')
+    .leftJoinAndSelect('h.dayRecords', 'r', 'r.date = :today', { today })
+    .orderBy('h.createdAt', 'DESC');
+
+  if (archived !== undefined) {
+    qb.andWhere('h.archived = :archived', { archived });
   }
 
-  // ✅ نجلب عادة واحدة مع سجل اليوم فقط
-  async findOne(id: number): Promise<Habit> {
-    const today = this.getToday();
+  return qb.getMany();
+}
 
-    const habit = await this.habitRepository
-      .createQueryBuilder('h')
-      .leftJoinAndSelect('h.dayRecords', 'r', 'r.date = :today', { today })
-      .where('h.id = :id', { id })
-      .getOne();
+// ✅ نجلب عادة واحدة مع سجل اليوم فقط (كما هي)
+async findOne(id: number): Promise<Habit> {
+  const today = this.getToday();
+  const habit = await this.habitRepository
+    .createQueryBuilder('h')
+    .leftJoinAndSelect('h.dayRecords', 'r', 'r.date = :today', { today })
+    .where('h.id = :id', { id })
+    .getOne();
 
-    if (!habit) throw new NotFoundException(`Habit #${id} not found`);
-    return habit;
-  }
+  if (!habit) throw new NotFoundException(`Habit #${id} not found`);
+  return habit;
+}
+
 
   async updateHabit(id: number, dto: UpdateHabitDto): Promise<Habit> {
     const habit = await this.findOne(id);
