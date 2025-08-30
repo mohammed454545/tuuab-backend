@@ -8,6 +8,7 @@ import {
   ParseIntPipe,
   Query,
   Delete,
+  BadRequestException,
 } from '@nestjs/common';
 import { HabitsService } from './habits.service';
 import { CreateHabitDto } from './dto/create-habit.dto';
@@ -33,35 +34,34 @@ export class HabitsController {
     };
   }
 
-@Get()
-async findAll(@Query() query: FindHabitsQueryDto) {
-  // تحويل النص إلى boolean أو تركه undefined لو غير مُرسل
-  const archived =
-    query.archived !== undefined ? query.archived === 'true' : undefined;
+  @Get()
+  async findAll(@Query() query: FindHabitsQueryDto) {
+    const archived =
+      query.archived !== undefined ? query.archived === 'true' : undefined;
 
-  const habits = await this.habitsService.findAll(archived);
+    const habits = await this.habitsService.findAll(archived);
 
-  const transformedHabits = habits.map((h) =>
-    instanceToPlain(h, { excludeExtraneousValues: true }),
-  );
+    const transformedHabits = habits.map((h) =>
+      instanceToPlain(h, { excludeExtraneousValues: true }),
+    );
 
-  return {
-    message: 'تم جلب جميع العادات بنجاح',
-    data: transformedHabits,
-  };
-}
+    return {
+      message: 'تم جلب جميع العادات بنجاح',
+      data: transformedHabits,
+    };
+  }
 
-@Get(':id')
-async findOne(@Param('id', ParseIntPipe) id: number) {
-  const habit = await this.habitsService.findOne(id);
-  const transformedHabit = instanceToPlain(habit, {
-    excludeExtraneousValues: true,
-  });
-  return {
-    message: 'تم جلب العادة بنجاح',
-    data: transformedHabit,
-  };
-}
+  @Get(':id')
+  async findOne(@Param('id', ParseIntPipe) id: number) {
+    const habit = await this.habitsService.findOne(id);
+    const transformedHabit = instanceToPlain(habit, {
+      excludeExtraneousValues: true,
+    });
+    return {
+      message: 'تم جلب العادة بنجاح',
+      data: transformedHabit,
+    };
+  }
 
   @Patch(':id')
   async update(
@@ -91,10 +91,10 @@ async findOne(@Param('id', ParseIntPipe) id: number) {
   }
 
   @Delete(':id')
-async remove(@Param('id', ParseIntPipe) id: number) {
-  await this.habitsService.deleteHabit(id);
-  return { message: 'تم حذف العادة بنجاح', data: { id } };
-}
+  async remove(@Param('id', ParseIntPipe) id: number) {
+    await this.habitsService.deleteHabit(id);
+    return { message: 'تم حذف العادة بنجاح', data: { id } };
+  }
 
   @Post(':id/records')
   async addDayRecord(
@@ -108,37 +108,53 @@ async remove(@Param('id', ParseIntPipe) id: number) {
     };
   }
 
+  // ✅ مسار واحد فقط لجلب السجلات
   @Get(':id/records')
-  async getAllRecords(@Param('id', ParseIntPipe) id: number) {
-    const records = await this.habitsService.getAllRecords(id);
+  async getRecords(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('days') days?: string,
+  ) {
+    
+     console.log('[getRecords] id=', id, 'days=', days); // 👈
+    // كل السجلات
+    if (!days || days.toLowerCase() === 'all') {
+      const all = await this.habitsService.getAllRecords(id);
+      return { message: 'تم جلب جميع السجلات بنجاح', data: all };
+    }
+
+    // تحقق من قيمة days
+    const n = Number(days);
+    if (!Number.isInteger(n) || n < 1) {
+      throw new BadRequestException('days يجب أن تكون رقمًا صحيحًا موجبًا أو all');
+    }
+
+    // حساب نطاق الأيام
+    const now = new Date();
+    const start = startOfDayLocal(addDays(now, -(n - 1)));
+    const end = endOfDayLocal(now);
+
+    const records = await this.habitsService.getRecordsBetween(id, start, end);
+
     return {
-      message: 'تم جلب جميع السجلات بنجاح',
+      message: `تم جلب السجلات لآخر ${n} يوم(أيام) بنجاح`,
       data: records,
     };
   }
+}
 
-  @Get(':id/records/by-date')
-  async getRecordByDate(
-    @Param('id', ParseIntPipe) id: number,
-    @Query('date') date: string,
-  ) {
-    const record = await this.habitsService.getRecordByDate(id, date);
-    return {
-      message: `تم جلب السجل لتاريخ ${date} بنجاح`,
-      data: record,
-    };
-  }
-
-  @Get(':id/records/by-range')
-  async getRecordsByRange(
-    @Param('id', ParseIntPipe) id: number,
-    @Query('from') from: string,
-    @Query('to') to: string,
-  ) {
-    const records = await this.habitsService.getRecordsByRange(id, from, to);
-    return {
-      message: `تم جلب السجلات بين ${from} و ${to} بنجاح`,
-      data: records,
-    };
-  }
+/* Helpers */
+function addDays(d: Date, n: number) {
+  const x = new Date(d);
+  x.setDate(x.getDate() + n);
+  return x;
+}
+function startOfDayLocal(d: Date) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+function endOfDayLocal(d: Date) {
+  const x = new Date(d);
+  x.setHours(23, 59, 59, 999);
+  return x;
 }
