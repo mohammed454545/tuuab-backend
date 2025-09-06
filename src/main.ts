@@ -10,7 +10,7 @@ async function bootstrap() {
   const allowedOrigins = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
-    process.env.FRONTEND_URL, // مثال: https://tuuab-frontend-production.up.railway.app
+    "https://tuuab-frontend-production.up.railway.app/", // مثال: https://tuuab-frontend-production.up.railway.app
   ].filter(Boolean);
 
   app.enableCors({
