@@ -36,7 +36,7 @@ import { HabitsModule } from './habits/habits.module';
         return {
           ...common,
           host: process.env.DB_HOST || 'localhost',
-          port: parseInt(process.env.DB_PORT || '5432', 10),
+          port: parseInt(process.env.DB_PORT || '4545', 10),
           username: process.env.DB_USERNAME || 'postgres',
           password: process.env.DB_PASSWORD || '',
           database: process.env.DB_NAME || 'tuuabDB',
