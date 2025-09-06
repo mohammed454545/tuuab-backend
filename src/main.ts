@@ -14,10 +14,13 @@ async function bootstrap() {
   ].filter(Boolean);
 
   app.enableCors({
-    origin: allowedOrigins,
-    credentials: true,
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-  });
+  origin: [
+    'http://localhost:3000',
+    'https://tuuab-frontend-production.up.railway.app',
+  ],
+  credentials: true,
+});
+
 
   await app.listen(port, '0.0.0.0');
   console.log('Listening on', port, 'CORS:', allowedOrigins);
